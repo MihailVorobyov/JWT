@@ -8,12 +8,14 @@ import gpn.interfaces.service.IAuthenticationService;
 import gpn.interfaces.service.IClaimsService;
 import gpn.util.JwtTokenUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.userdetails.User;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import javax.naming.NamingException;
 import javax.naming.directory.Attributes;
 import javax.naming.directory.SearchResult;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -31,7 +33,7 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
     private IClaimsService claimsService;
 
     @Override
-    public String getAuthToken(String userName) throws UserNotFoundException, ApplicationException {
+    public String getAuthToken(String userName, String lastName, String phone) throws UserNotFoundException, ApplicationException {
 //        SearchResult searchResult;
 //        try {
 //            searchResult = ldapService.findAccountByAccountName(userName);
@@ -43,7 +45,10 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
 //        }
 
         SystemUser sUser = new SystemUser();
+        sUser.setId(1L);
         sUser.setUserName(userName);
+        sUser.setLastName(lastName);
+        sUser.setPhoneNumber(phone);
         sUser.setDomainName("-");
         sUser.setDisplayName("-");
         sUser.setEmail("-");
@@ -53,17 +58,20 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
 //        } catch (NamingException e) {
 //            throw new ApplicationException(e);
 //        }
-
-        SystemUser cUser = userService.getUser(sUser.getUserName());
-        boolean isNewUser = userService.update(sUser);
+    
+        SystemUser cUser = sUser;
+        boolean isNewUser = true;
         if (isNewUser) {
-            List<Claim> defaultClaims = claimsService.getDefaultUserClaims();
-            claimsService.updateClaims(sUser.getId(), defaultClaims);
+            List<Claim> defaultClaims = new ArrayList<>();
+            Claim testClaim = new Claim("testType", "testValue");
+            testClaim.setId(1L);
+            defaultClaims.add(testClaim);
+            sUser.setClaims(defaultClaims);
         }
 
         if (cUser != null) {
             sUser.setId(cUser.getId());
-            sUser.setClaims(userService.getClaims(sUser.getId()));
+            sUser.setClaims(sUser.getClaims());
         }
 
 //        SystemUser sUser = new SystemUser();
@@ -74,8 +82,8 @@ public class AuthenticationServiceImpl implements IAuthenticationService {
 //        sUser.setDisplayName("user3");
 //        sUser.setEmail("mail");
 //        sUser.setGuid("uuid");
-
-        final UserDetails userDetails = userDetailsService.loadUserByUsername(userName);
+    
+        final UserDetails userDetails = new User(userName, "$2a$10$ixlPY3AAd4ty1l6E2IsQ9OFZi2ba9ZQE0bP7RFcGIWNhyFrrT3YUi", new ArrayList<>());
         return jwtTokenUtil.generateToken(userDetails, sUser);
     }
 
